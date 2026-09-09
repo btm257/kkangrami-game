@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -150,13 +151,6 @@ body,html{width:100%;height:100%;overflow:hidden;background:#000;
 .screen{position:absolute;inset:0;background:rgba(0,0,0,.9);color:#fff;
   display:flex;flex-direction:column;align-items:center;z-index:30;
   backdrop-filter:blur(10px);overflow-y:auto;padding:20px 0}
-#rotateOverlay{position:fixed;inset:0;z-index:9999;background:radial-gradient(ellipse at center,#1a1440 0%,#050310 100%);
-  color:#fff;display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;
-  padding:24px;gap:14px}
-#rotateOverlay .ro-icon{font-size:clamp(48px,14vw,72px);animation:roSpin 1.8s ease-in-out infinite}
-#rotateOverlay h2{font-size:clamp(1.2rem,4vw,1.6rem);margin:0;color:#ffd54f;text-shadow:0 0 14px rgba(255,213,79,.6)}
-#rotateOverlay p{font-size:clamp(.85rem,2.4vw,1rem);color:#ddd;margin:0;max-width:320px;line-height:1.6}
-@keyframes roSpin{0%,100%{transform:rotate(0deg)}50%{transform:rotate(-90deg)}}
 .screen h1{font-size:clamp(1.7rem,5.2vw,2.9rem);margin-bottom:10px;text-align:center;color:#ff5252;text-shadow:2px 2px 8px rgba(0,0,0,.9);margin-top:auto}
 .screen>p{font-size:clamp(.82rem,2.1vw,1.1rem);margin-bottom:8px;text-align:center;padding:0 20px;line-height:1.75;color:#ddd}
 .guide{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin:8px 0;max-width:440px;width:92%}
@@ -187,14 +181,23 @@ button:hover{background:linear-gradient(135deg,#e53935,#c62828)}
 .lb-date{color:rgba(255,255,255,.38);text-align:right;font-size:clamp(9px,1.5vw,11px)}
 .lb-empty{color:rgba(255,255,255,.3);text-align:center;padding:10px;font-size:clamp(11px,2vw,13px)}
 #lbClearBtn{background:rgba(255,255,255,.08)!important;border:1px solid rgba(255,255,255,.2)!important;color:rgba(255,255,255,.45)!important;font-size:clamp(10px,1.8vw,13px)!important;padding:6px 16px!important;margin-top:6px;box-shadow:none!important}
+@media (max-height:500px){
+  .screen{padding:8px 0}
+  .screen h1{font-size:clamp(1rem,4.5vh,1.5rem);margin-bottom:2px;margin-top:0}
+  #goScreen.screen{padding-top:6px}
+  .screen p{font-size:clamp(.75rem,2.2vh,.95rem);margin:2px 0}
+  #goRankBadge{margin:2px 0;font-size:clamp(.85rem,3vh,1.05rem)}
+  #leaderboard{padding:6px 10px;margin:4px 0;max-height:32vh;overflow-y:auto}
+  .lb-title{margin-bottom:3px;font-size:clamp(10px,2vh,12px)}
+  .lb-row{padding:2px 5px;font-size:clamp(10px,1.8vh,12px)}
+  button{padding:clamp(6px,1.6vh,9px) clamp(18px,4.5vh,28px);font-size:clamp(.75rem,2.3vh,.95rem)}
+  #lbClearBtn{padding:3px 12px!important;margin-top:3px}
+}
 </style>
 </head>
 <body>
-<div id="rotateOverlay">
-  <div class="ro-icon">📱</div>
-  <h2>세로 모드로 돌려주세요!</h2>
-  <p>깡라미 서바이벌은 세로 화면 기준으로 만들어졌어요. 기기를 세로로 돌리면 하던 그대로 바로 이어서 플레이할 수 있어요 🐾</p>
-</div>
+<div id="buildTag" style="position:fixed;bottom:2px;right:4px;font-size:9px;color:rgba(255,255,255,.3);z-index:10000;pointer-events:none;font-family:monospace">build 2026-09-08e · 가로모드/성능개선</div>
+
 <div id="gameArea">
   <div id="gameBg"></div><div id="gameBgNew"></div>
   <div id="stars"></div><div id="moon"></div><div id="levelName"></div>
@@ -431,7 +434,23 @@ const bgm=new BGM();
 function toggleBGM(){bgm._muted=!bgm._muted;bgm.setMute(bgm._muted);const p=document.getElementById('bgmPill');p.textContent=bgm._muted?'🔇 BGM':'🎵 BGM';p.className=bgm._muted?'pill bgm-off':'pill bgm-on';}
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)bgm.resume();});
 window.addEventListener('focus',()=>bgm.resume());
-['click','keydown','touchstart'].forEach(ev=>{document.addEventListener(ev,()=>{if(bgm.ac&&bgm.ac.state==='suspended'&&bgm.playing)bgm.resume();},{passive:true});});
+// ★ 아이폰 무음(벨소리) 스위치가 켜져 있으면 Web Audio 소리 자체가 하드웨어 단에서 묵음 처리됨.
+// 아주 짧은 무음 <audio> 엘리먼트를 함께 반복 재생시켜두면, iOS가 페이지 전체 오디오를
+// '미디어 재생'으로 취급해 무음 스위치와 무관하게 BGM/효과음이 들리게 됨 (널리 쓰이는 표준 우회 기법).
+let silentUnlock=null;
+try{
+  silentUnlock=new Audio('data:audio/wav;base64,UklGRuQSAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YcASAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==');
+  silentUnlock.loop=true;silentUnlock.volume=0.001;silentUnlock.playsInline=true;
+}catch(e){silentUnlock=null;}
+let silentUnlockStarted=false;
+function unlockAudioForIOS(){
+  if(silentUnlockStarted||!silentUnlock)return;silentUnlockStarted=true;
+  try{silentUnlock.play().catch(()=>{});}catch(e){}
+}
+['click','keydown','touchstart'].forEach(ev=>{document.addEventListener(ev,()=>{
+  try{unlockAudioForIOS();}catch(e){}
+  try{if(bgm.ac&&bgm.ac.state==='suspended'&&bgm.playing)bgm.resume();}catch(e){}
+},{passive:true});});
 
 // ═══════════════════════════════════════
 //  🔊 SFX — 전체 효과음 시스템
@@ -565,15 +584,15 @@ let gameLoopId,obsTimerId,itemTimerId,comboTimerId;
 let obstacles=[],itemObjs=[];
 let baseSpeed=0,gameSpeed=0,obsInterval=1400,scoreMultiplier=1;
 const isMobile=('ontouchstart' in window)||navigator.maxTouchPoints>0;
-const rotateOverlay=document.getElementById('rotateOverlay');
-let orientationBlocked=false;
-function checkOrientation(){
-  orientationBlocked=isMobile&&window.innerWidth>window.innerHeight;
-  rotateOverlay.style.display=orientationBlocked?'flex':'none';
+function handleResize(){
+  // 화면 크기(가로/세로 전환 포함)가 바뀌면 캐릭터 가로 위치를 새 너비 기준으로 다시 계산해서
+  // 회전 전 값이 그대로 남아 좌측 버튼과 겹치거나 화면 밖으로 나가는 걸 방지
+  const LLIM=5,RLIM=window.innerWidth*0.75;
+  playerX=Math.min(Math.max(window.innerWidth*.10,LLIM),RLIM);
+  if(player)player.style.left=playerX+'px';
 }
-checkOrientation();
-window.addEventListener('resize',checkOrientation);
-window.addEventListener('orientationchange',checkOrientation);
+window.addEventListener('resize',handleResize);
+window.addEventListener('orientationchange',handleResize);
 const keys={};
 let currentRunId=null;
 
@@ -645,8 +664,17 @@ window.addEventListener('keyup',e=>{
 window.addEventListener('blur',()=>{Object.keys(keys).forEach(k=>{keys[k]=false;});document.querySelectorAll('.cg-key').forEach(k=>k.classList.remove('lit'));if(playerDucking)stopDuck();playerVX=0;});
 gameArea.addEventListener('touchstart',e=>{if(e.target.classList.contains('ctrl-btn')||e.target===jumpBtn||e.target===dashMobile||e.target.tagName==='BUTTON')return;e.preventDefault();if(!isGameOver)doJump();},{passive:false});
 gameArea.addEventListener('mousedown',e=>{if(e.target.tagName==='BUTTON'||e.target.classList.contains('ctrl-btn'))return;if(!isGameOver)doJump();});
-document.getElementById('startBtn').addEventListener('click',startGame);
-document.getElementById('restartBtn').addEventListener('click',startGame);
+let _startGuard=false;
+function _safeStartGame(e){
+  if(e&&e.cancelable)e.preventDefault();
+  if(_startGuard)return;_startGuard=true;
+  try{startGame();}finally{setTimeout(()=>{_startGuard=false;},300);}
+}
+[['startBtn'],['restartBtn']].forEach(([id])=>{
+  const btn=document.getElementById(id);if(!btn)return;
+  btn.addEventListener('click',_safeStartGame);
+  btn.addEventListener('touchend',_safeStartGame,{passive:false});
+});
 jumpBtn.addEventListener('touchstart',e=>{e.preventDefault();if(!isGameOver)doJump();},{passive:false});
 jumpBtn.addEventListener('click',e=>{e.preventDefault();if(!isGameOver)doJump();});
 dashMobile.addEventListener('touchstart',e=>{e.preventDefault();if(!isGameOver)doDash();},{passive:false});
@@ -803,7 +831,6 @@ function checkLevelUp(){
 // ═══════════════════════════════════════
 function update(){
   if(isGameOver)return;frameCount++;
-  if(orientationBlocked){gameLoopId=requestAnimationFrame(update);return;}
   const LLIM=5,RLIM=window.innerWidth*0.75;
   if(dashActive){playerVX=MAX_VX*3.5;dashTimer--;if(dashTimer<=0){dashActive=false;dashInvincible=false;player.classList.remove('dashing');}if(frameCount%3===0)spawnDashGhost();}
   else{const lp=keys['ArrowLeft']||keys['KeyA'],rp=keys['ArrowRight']||keys['KeyD'];if(lp&&!rp)playerVX=Math.max(-MAX_VX,playerVX-ACCEL);else if(rp&&!lp)playerVX=Math.min(MAX_VX,playerVX+ACCEL);else{playerVX*=FRICTION;if(Math.abs(playerVX)<0.15)playerVX=0;}}

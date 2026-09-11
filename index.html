@@ -180,7 +180,7 @@ button:hover{background:linear-gradient(135deg,#e53935,#c62828)}
 .lb-date{color:rgba(255,255,255,.38);text-align:right;font-size:clamp(9px,1.5vw,11px)}
 .lb-name{font-weight:600;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .lb-tabs{display:flex;gap:6px;margin-bottom:6px}
-.lb-tab{flex:1;padding:5px;border-radius:8px;text-align:center;font-size:clamp(10px,1.8vw,12px);background:rgba(255,255,255,.06);cursor:pointer;border:1px solid transparent}
+.lb-tab{flex:1;padding:5px;border-radius:8px;text-align:center;font-size:clamp(10px,1.8vw,12px);background:rgba(255,255,255,.06);cursor:pointer;border:1px solid transparent;font-family:inherit;color:rgba(255,255,255,.75);-webkit-appearance:none;appearance:none;-webkit-tap-highlight-color:transparent}
 .lb-tab.active{background:rgba(255,215,0,.18);border-color:rgba(255,215,0,.35);color:#ffd700;font-weight:700}
 .lb-empty{color:rgba(255,255,255,.3);text-align:center;padding:10px;font-size:clamp(11px,2vw,13px)}
 #lbClearBtn{background:rgba(255,255,255,.08)!important;border:1px solid rgba(255,255,255,.2)!important;color:rgba(255,255,255,.45)!important;font-size:clamp(10px,1.8vw,13px)!important;padding:6px 16px!important;margin-top:6px;box-shadow:none!important}
@@ -264,8 +264,8 @@ button:hover{background:linear-gradient(135deg,#e53935,#c62828)}
     <div id="goRankBadge"></div>
     <div id="leaderboard">
       <div class="lb-tabs">
-        <div class="lb-tab active" id="lbTabMine" onclick="switchLbTab('mine')">📋 내 기록 TOP 10</div>
-        <div class="lb-tab" id="lbTabGlobal" onclick="switchLbTab('global')">🌍 글로벌 랭킹</div>
+        <button type="button" class="lb-tab active" id="lbTabMine" onclick="switchLbTab('mine')">📋 내 기록 TOP 10</button>
+        <button type="button" class="lb-tab" id="lbTabGlobal" onclick="switchLbTab('global')">🌍 글로벌 랭킹</button>
       </div>
       <div id="lbRows"></div>
       <button id="lbClearBtn" onclick="clearLeaderboard()">기록 초기화</button>
